@@ -24,7 +24,12 @@ export default function AdminDashboard({ admin, onLogout }) {
   const teacherFileRef = useRef();
   const feeFileRef = useRef();
 
-  useEffect(() => { fetchLevels(); fetchFaculties(); fetchProgrammes(); fetchStudents(); }, []);
+  useEffect(() => {
+    fetchLevels();
+    fetchFaculties();
+    fetchProgrammes();
+    fetchStudents();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'students') fetchStudents();
@@ -52,6 +57,17 @@ export default function AdminDashboard({ admin, onLogout }) {
   const fetchFees = async () => { try { const r = await API.get('/admin/fees'); setFees(r.data); } catch(e){} };
   const fetchAllMarks = async () => { try { const r = await API.get('/admin/marks'); setMarks(r.data); } catch(e){} };
 
+  // Helper to get faculty name from faculty_id
+  const getFacultyName = (faculty_id) => {
+    const f = faculties.find(f => String(f.faculty_id) === String(faculty_id));
+    return f ? f.faculty_name : 'N/A';
+  };
+
+  const getFacultyColor = (faculty_id) => {
+    const name = getFacultyName(faculty_id);
+    return facultyColors[name] || '#667eea';
+  };
+
   const showMsg = (text, type = 'success') => { setMsg(text); setMsgType(type); setTimeout(() => setMsg(''), 4000); };
 
   const handleDelete = async (type, id) => {
@@ -61,25 +77,25 @@ export default function AdminDashboard({ admin, onLogout }) {
       showMsg('Deleted!');
       if (type === 'students') fetchStudents();
       if (type === 'teachers') fetchTeachers();
-    } catch(e) { showMsg('Delete failed!','error'); }
+    } catch(e) { showMsg('Delete failed!', 'error'); }
   };
 
   const handleAddLevel = async (e) => {
     e.preventDefault();
     try { await API.post('/levels', form); showMsg('Level added!'); setForm({}); fetchLevels(); }
-    catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const handleAddFaculty = async (e) => {
     e.preventDefault();
     try { await API.post('/faculties', form); showMsg('Faculty added!'); setForm({}); fetchFaculties(); }
-    catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const handleAddProgramme = async (e) => {
     e.preventDefault();
     try { await API.post('/programmes', form); showMsg('Programme added!'); setForm({}); fetchProgrammes(); }
-    catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const handleAddStudent = async (e) => {
@@ -87,31 +103,31 @@ export default function AdminDashboard({ admin, onLogout }) {
     try {
       await API.post('/students', { ...form, level_id: studentLevel, faculty_id: studentFaculty });
       showMsg('Student added!'); setForm({}); setStudentLevel(''); setStudentFaculty(''); fetchStudents();
-    } catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    } catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const handleAddTeacher = async (e) => {
     e.preventDefault();
     try { await API.post('/admin/teachers', form); showMsg('Teacher added!'); setForm({}); fetchTeachers(); }
-    catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const handleAddFee = async (e) => {
     e.preventDefault();
     try { await API.post('/fees', form); showMsg('Fee added!'); setForm({}); fetchFees(); }
-    catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const handleMarkPaid = async (fee_id) => {
     try { await API.put(`/fees/pay/${fee_id}`); showMsg('Fee marked as paid!'); fetchFees(); }
-    catch(err) { showMsg(err.response?.data?.error||'Error','error'); }
+    catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
 
   const downloadTemplate = (type) => {
     const templates = {
-      students: [{ roll_no:'CS001', name:'Rahul Sharma', email:'rahul@college.com', phone:'9876543210', level_name:'UG', faculty_name:'Science', programme_name:'B.Sc Computer Science', semester:1, year:1, password:'password123' }],
+      students: [{ roll_no:'BCA001', name:'Rahul Sharma', email:'rahul@college.com', phone:'9876543210', level_name:'UG', faculty_name:'Science', programme_name:'BCA', semester:1, year:1, password:'password123' }],
       teachers: [{ name:'Dr. Sharma', email:'sharma@college.com', phone:'9876543211', department:'Computer Science', password:'teacher123' }],
-      fees: [{ roll_no:'CS001', amount:15000, fee_type:'Tuition Fee', due_date:'2026-04-01' }],
+      fees: [{ roll_no:'BCA001', amount:15000, fee_type:'Tuition Fee', due_date:'2026-04-01' }],
     };
     const ws = XLSX.utils.json_to_sheet(templates[type]);
     const wb = XLSX.utils.book_new();
@@ -185,7 +201,6 @@ export default function AdminDashboard({ admin, onLogout }) {
     } catch { showMsg('Failed!','error'); } finally { setImporting(false); e.target.value=''; }
   };
 
-  const facultyColors = { 'Arts':'#9f7aea', 'Science':'#48bb78', 'Commerce':'#ed8936' };
   const tabs = ['levels','students','teachers','subjects','attendance','fees','marks'];
   const msgStyle = { ...styles.msg, background: msgType==='error'?'#fff5f5':msgType==='warning'?'#fffbeb':'#c6f6d5', color: msgType==='error'?'#c53030':msgType==='warning'?'#92400e':'#276749' };
 
@@ -198,20 +213,24 @@ export default function AdminDashboard({ admin, onLogout }) {
           <button style={styles.logoutBtn} onClick={onLogout}>Logout</button>
         </div>
       </nav>
+
       <div style={styles.tabs}>
         {tabs.map(tab => (
-          <button key={tab} style={{...styles.tab, ...(activeTab===tab?styles.activeTab:{})}}
+          <button key={tab} style={{...styles.tab, ...(activeTab===tab ? styles.activeTab : {})}}
             onClick={() => { setActiveTab(tab); setMsg(''); setForm({}); setStudentLevel(''); setStudentFaculty(''); }}>
             {tab==='levels'?'🏫 Levels & Faculties':tab.charAt(0).toUpperCase()+tab.slice(1)}
           </button>
         ))}
       </div>
+
       {msg && <div style={msgStyle}>{msg}</div>}
+
       <div style={styles.content}>
 
         {/* LEVELS FACULTIES PROGRAMMES */}
         {activeTab === 'levels' && (
           <div style={styles.threeCol}>
+            {/* LEVELS */}
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>🎯 Levels</h3>
               <form onSubmit={handleAddLevel} style={styles.form}>
@@ -231,6 +250,8 @@ export default function AdminDashboard({ admin, onLogout }) {
                 ))}</tbody>
               </table>
             </div>
+
+            {/* FACULTIES */}
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>🏛️ Faculties</h3>
               <form onSubmit={handleAddFaculty} style={styles.form}>
@@ -250,6 +271,8 @@ export default function AdminDashboard({ admin, onLogout }) {
                 ))}</tbody>
               </table>
             </div>
+
+            {/* PROGRAMMES */}
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>📚 Programmes</h3>
               <form onSubmit={handleAddProgramme} style={styles.form}>
@@ -269,11 +292,19 @@ export default function AdminDashboard({ admin, onLogout }) {
                 <thead><tr>{['Level','Faculty','Programme','Dur','Del'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
                 <tbody>{programmes.map(p=>(
                   <tr key={p.programme_id}>
-                    <td style={styles.td}><span style={{...styles.badge,background:'#4c51bf'}}>{p.level_name}</span></td>
-                    <td style={styles.td}><span style={{...styles.badge,background:facultyColors[p.faculty_name]||'#667eea'}}>{p.faculty_name||'N/A'}</span></td>
+                    <td style={styles.td}>
+                      <span style={{...styles.badge,background:'#4c51bf'}}>{p.level_name}</span>
+                    </td>
+                    <td style={styles.td}>
+                      <span style={{...styles.badge, background: getFacultyColor(p.faculty_id)}}>
+                        {getFacultyName(p.faculty_id)}
+                      </span>
+                    </td>
                     <td style={styles.td}>{p.programme_name}</td>
                     <td style={styles.td}>{p.duration_years}y</td>
-                    <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/programmes/${p.programme_id}`).then(fetchProgrammes)}>✕</button></td>
+                    <td style={styles.td}>
+                      <button style={styles.delBtn} onClick={()=>API.delete(`/programmes/${p.programme_id}`).then(fetchProgrammes)}>✕</button>
+                    </td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -322,10 +353,11 @@ export default function AdminDashboard({ admin, onLogout }) {
               <thead><tr>{['ID','Roll No','Name','Level','Faculty','Programme','Sem','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
               <tbody>{students.map(s=>(
                 <tr key={s.student_id}>
-                  <td style={styles.td}>{s.student_id}</td><td style={styles.td}>{s.roll_no}</td>
+                  <td style={styles.td}>{s.student_id}</td>
+                  <td style={styles.td}>{s.roll_no}</td>
                   <td style={styles.td}>{s.name}</td>
                   <td style={styles.td}><span style={{...styles.badge,background:'#4c51bf'}}>{s.level_name||'N/A'}</span></td>
-                  <td style={styles.td}><span style={{...styles.badge,background:facultyColors[s.faculty_name]||'#667eea'}}>{s.faculty_name||'N/A'}</span></td>
+                  <td style={styles.td}><span style={{...styles.badge,background:getFacultyColor(s.faculty_id)}}>{getFacultyName(s.faculty_id)}</span></td>
                   <td style={styles.td}>{s.programme_name||s.course||'N/A'}</td>
                   <td style={styles.td}>{s.semester}</td>
                   <td style={styles.td}><button style={styles.delBtn} onClick={()=>handleDelete('students',s.student_id)}>Delete</button></td>
@@ -371,14 +403,9 @@ export default function AdminDashboard({ admin, onLogout }) {
           </div>
         )}
 
-        {/* SUBJECTS - New Component */}
+        {/* SUBJECTS */}
         {activeTab === 'subjects' && (
-          <SubjectsTab
-            levels={levels}
-            faculties={faculties}
-            programmes={programmes}
-            showMsg={showMsg}
-          />
+          <SubjectsTab levels={levels} faculties={faculties} programmes={programmes} showMsg={showMsg} />
         )}
 
         {/* ATTENDANCE */}
@@ -390,7 +417,8 @@ export default function AdminDashboard({ admin, onLogout }) {
               <thead><tr>{['ID','Student','Subject','Date','Status'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
               <tbody>{attendance.map(a=>(
                 <tr key={a.attendance_id}>
-                  <td style={styles.td}>{a.attendance_id}</td><td style={styles.td}>{a.student_name}</td>
+                  <td style={styles.td}>{a.attendance_id}</td>
+                  <td style={styles.td}>{a.student_name}</td>
                   <td style={styles.td}>{a.subject_name}</td>
                   <td style={styles.td}>{new Date(a.date).toLocaleDateString()}</td>
                   <td style={styles.td}><span style={{...styles.badge,background:a.status==='PRESENT'?'#48bb78':a.status==='LATE'?'#ed8936':'#e53e3e'}}>{a.status}</span></td>
@@ -471,6 +499,8 @@ export default function AdminDashboard({ admin, onLogout }) {
     </div>
   );
 }
+
+const facultyColors = { 'Arts':'#9f7aea', 'Science':'#48bb78', 'Commerce':'#ed8936' };
 
 const styles = {
   container: { minHeight:'100vh', background:'#f0f4f8' },
