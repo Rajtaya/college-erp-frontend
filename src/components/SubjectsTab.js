@@ -189,7 +189,7 @@ export default function SubjectsTab({ levels, faculties, programmes, showMsg }) 
             internal_marks: Number(row.internal_marks||0),
             end_term_marks: Number(row.end_term_marks||0),
             total_marks,
-            exam_duration: Number(row.exam_duration||0),
+            
             level_id: levelMap[String(row.level_name||'').toUpperCase().trim()] || null,
             faculty_id: facName ? (facMap[facName] || null) : null,
             programme_id: (!isCommon && progName) ? (progMap[progName] || null) : null,
