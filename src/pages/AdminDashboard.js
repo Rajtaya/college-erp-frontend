@@ -15,22 +15,22 @@ export default function AdminDashboard({ admin, onLogout }) {
   const [marks, setMarks] = useState([]);
   const [form, setForm] = useState({});
 
-  // Student form
-  const [selectedLevel, setSelectedLevel] = useState('');
-  const [selectedFaculty, setSelectedFaculty] = useState('');
-  const [filteredProgrammes, setFilteredProgrammes] = useState([]);
+  // Student form selectors
+  const [studentLevel, setStudentLevel] = useState('');
+  const [studentFaculty, setStudentFaculty] = useState('');
+  const [studentProgrammes, setStudentProgrammes] = useState([]);
 
-  // Subject form
-  const [subjectFormLevel, setSubjectFormLevel] = useState('');
-  const [subjectFormFaculty, setSubjectFormFaculty] = useState('');
-  const [subjectFormProgrammes, setSubjectFormProgrammes] = useState([]);
+  // Subject form selectors
+  const [subjectLevel, setSubjectLevel] = useState('');
+  const [subjectFaculty, setSubjectFaculty] = useState('');
+  const [subjectProgrammes, setSubjectProgrammes] = useState([]);
 
   // Subject filters
-  const [subjectFilterLevel, setSubjectFilterLevel] = useState('');
-  const [subjectFilterFaculty, setSubjectFilterFaculty] = useState('');
-  const [subjectFilterProgramme, setSubjectFilterProgramme] = useState('');
-  const [subjectFilterCategory, setSubjectFilterCategory] = useState('');
-  const [subjectFilterProgrammes, setSubjectFilterProgrammes] = useState([]);
+  const [filterLevel, setFilterLevel] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState('');
+  const [filterProgramme, setFilterProgramme] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterProgrammes, setFilterProgrammes] = useState([]);
 
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('success');
@@ -40,76 +40,85 @@ export default function AdminDashboard({ admin, onLogout }) {
   const subjectFileRef = useRef();
   const feeFileRef = useRef();
 
-  useEffect(() => { fetchLevels(); fetchFaculties(); fetchProgrammes(); fetchStudents(); }, []);
+  useEffect(() => {
+    fetchLevels();
+    fetchFaculties();
+    fetchProgrammes();
+    fetchStudents();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'students') fetchStudents();
     if (activeTab === 'teachers') fetchTeachers();
-    if (activeTab === 'subjects') fetchSubjects();
+    if (activeTab === 'subjects') { fetchSubjects(); fetchProgrammes(); }
     if (activeTab === 'attendance') fetchAttendance();
     if (activeTab === 'fees') { fetchFees(); fetchStudents(); }
     if (activeTab === 'marks') fetchAllMarks();
   }, [activeTab]);
 
-  // Filter programmes for student form
+  // Student form - filter programmes by level + faculty
   useEffect(() => {
-    if (selectedLevel && selectedFaculty) {
-      setFilteredProgrammes(programmes.filter(p =>
-        p.level_id === parseInt(selectedLevel) && p.faculty_id === parseInt(selectedFaculty)
-      ));
-    } else if (selectedLevel) {
-      setFilteredProgrammes(programmes.filter(p => p.level_id === parseInt(selectedLevel)));
+    if (studentLevel && studentFaculty) {
+      const filtered = programmes.filter(p =>
+        String(p.level_id) === String(studentLevel) &&
+        String(p.faculty_id) === String(studentFaculty)
+      );
+      setStudentProgrammes(filtered);
     } else {
-      setFilteredProgrammes([]);
+      setStudentProgrammes([]);
     }
-  }, [selectedLevel, selectedFaculty, programmes]);
+  }, [studentLevel, studentFaculty, programmes]);
 
-  // Filter programmes for subject form
+  // Subject form - filter programmes by level + faculty
   useEffect(() => {
-    if (subjectFormLevel && subjectFormFaculty) {
-      setSubjectFormProgrammes(programmes.filter(p =>
-        p.level_id === parseInt(subjectFormLevel) && p.faculty_id === parseInt(subjectFormFaculty)
-      ));
-    } else if (subjectFormLevel) {
-      setSubjectFormProgrammes(programmes.filter(p => p.level_id === parseInt(subjectFormLevel)));
+    if (subjectLevel && subjectFaculty) {
+      const filtered = programmes.filter(p =>
+        String(p.level_id) === String(subjectLevel) &&
+        String(p.faculty_id) === String(subjectFaculty)
+      );
+      setSubjectProgrammes(filtered);
     } else {
-      setSubjectFormProgrammes([]);
+      setSubjectProgrammes([]);
     }
-  }, [subjectFormLevel, subjectFormFaculty, programmes]);
+  }, [subjectLevel, subjectFaculty, programmes]);
 
-  // Filter programmes for subject filter
+  // Filter box - filter programmes by level + faculty
   useEffect(() => {
-    if (subjectFilterLevel && subjectFilterFaculty) {
-      setSubjectFilterProgrammes(programmes.filter(p =>
-        p.level_id === parseInt(subjectFilterLevel) && p.faculty_id === parseInt(subjectFilterFaculty)
-      ));
-    } else if (subjectFilterLevel) {
-      setSubjectFilterProgrammes(programmes.filter(p => p.level_id === parseInt(subjectFilterLevel)));
+    if (filterLevel && filterFaculty) {
+      const filtered = programmes.filter(p =>
+        String(p.level_id) === String(filterLevel) &&
+        String(p.faculty_id) === String(filterFaculty)
+      );
+      setFilterProgrammes(filtered);
+    } else if (filterLevel) {
+      setFilterProgrammes(programmes.filter(p => String(p.level_id) === String(filterLevel)));
     } else {
-      setSubjectFilterProgrammes([]);
-      setSubjectFilterProgramme('');
+      setFilterProgrammes([]);
+      setFilterProgramme('');
     }
-  }, [subjectFilterLevel, subjectFilterFaculty, programmes]);
+  }, [filterLevel, filterFaculty, programmes]);
 
-  const fetchLevels = async () => { const r = await API.get('/levels'); setLevels(r.data); };
-  const fetchFaculties = async () => { const r = await API.get('/faculties'); setFaculties(r.data); };
-  const fetchProgrammes = async () => { const r = await API.get('/programmes'); setProgrammes(r.data); };
-  const fetchStudents = async () => { const r = await API.get('/admin/students'); setStudents(r.data); };
-  const fetchTeachers = async () => { const r = await API.get('/admin/teachers'); setTeachers(r.data); };
-  const fetchSubjects = async () => { const r = await API.get('/subjects'); setSubjects(r.data); };
-  const fetchAttendance = async () => { const r = await API.get('/admin/attendance'); setAttendance(r.data); };
-  const fetchFees = async () => { const r = await API.get('/admin/fees'); setFees(r.data); };
-  const fetchAllMarks = async () => { const r = await API.get('/admin/marks'); setMarks(r.data); };
+  const fetchLevels = async () => { try { const r = await API.get('/levels'); setLevels(r.data); } catch(e){} };
+  const fetchFaculties = async () => { try { const r = await API.get('/faculties'); setFaculties(r.data); } catch(e){} };
+  const fetchProgrammes = async () => { try { const r = await API.get('/programmes'); setProgrammes(r.data); } catch(e){} };
+  const fetchStudents = async () => { try { const r = await API.get('/admin/students'); setStudents(r.data); } catch(e){} };
+  const fetchTeachers = async () => { try { const r = await API.get('/admin/teachers'); setTeachers(r.data); } catch(e){} };
+  const fetchSubjects = async () => { try { const r = await API.get('/subjects'); setSubjects(r.data); } catch(e){} };
+  const fetchAttendance = async () => { try { const r = await API.get('/admin/attendance'); setAttendance(r.data); } catch(e){} };
+  const fetchFees = async () => { try { const r = await API.get('/admin/fees'); setFees(r.data); } catch(e){} };
+  const fetchAllMarks = async () => { try { const r = await API.get('/admin/marks'); setMarks(r.data); } catch(e){} };
 
   const showMsg = (text, type = 'success') => { setMsg(text); setMsgType(type); setTimeout(() => setMsg(''), 4000); };
 
   const handleDelete = async (type, id) => {
     if (!window.confirm('Are you sure?')) return;
-    await API.delete(`/admin/${type}/${id}`);
-    showMsg('Deleted successfully!');
-    if (type === 'students') fetchStudents();
-    if (type === 'teachers') fetchTeachers();
-    if (type === 'subjects') fetchSubjects();
+    try {
+      await API.delete(`/admin/${type}/${id}`);
+      showMsg('Deleted successfully!');
+      if (type === 'students') fetchStudents();
+      if (type === 'teachers') fetchTeachers();
+      if (type === 'subjects') fetchSubjects();
+    } catch(e) { showMsg('Delete failed!', 'error'); }
   };
 
   const handleAddFaculty = async (e) => {
@@ -133,9 +142,9 @@ export default function AdminDashboard({ admin, onLogout }) {
   const handleAddStudent = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/students', form);
-      showMsg('Student added!'); setForm({});
-      setSelectedLevel(''); setSelectedFaculty('');
+      await API.post('/students', { ...form, level_id: studentLevel, faculty_id: studentFaculty });
+      showMsg('Student added!');
+      setForm({}); setStudentLevel(''); setStudentFaculty('');
       fetchStudents();
     } catch (err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
@@ -149,9 +158,9 @@ export default function AdminDashboard({ admin, onLogout }) {
   const handleAddSubject = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/subjects', form);
-      showMsg('Subject added!'); setForm({});
-      setSubjectFormLevel(''); setSubjectFormFaculty('');
+      await API.post('/subjects', { ...form, level_id: subjectLevel, faculty_id: subjectFaculty });
+      showMsg('Subject added!');
+      setForm({}); setSubjectLevel(''); setSubjectFaculty('');
       fetchSubjects();
     } catch (err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
   };
@@ -171,7 +180,7 @@ export default function AdminDashboard({ admin, onLogout }) {
     const templates = {
       students: [{ roll_no: 'CS001', name: 'Rahul Sharma', email: 'rahul@college.com', phone: '9876543210', level_name: 'UG', faculty_name: 'Science', programme_name: 'B.Sc Computer Science', semester: 1, year: 1, password: 'password123' }],
       teachers: [{ name: 'Dr. Sharma', email: 'sharma@college.com', phone: '9876543211', department: 'Computer Science', password: 'teacher123' }],
-      subjects: [{ subject_code: 'CS101', subject_name: 'Introduction to Programming', category: 'MAJOR', semester: 1, credits: 4, level_name: 'UG', faculty_name: 'Science', programme_name: 'B.Sc Computer Science' }],
+      subjects: [{ subject_code: 'CS101', subject_name: 'Intro to Programming', category: 'MAJOR', semester: 1, credits: 4, level_name: 'UG', faculty_name: 'Science', programme_name: 'B.Sc Computer Science' }],
       fees: [{ roll_no: 'CS001', amount: 15000, fee_type: 'Tuition Fee', due_date: '2026-04-01' }],
     };
     const ws = XLSX.utils.json_to_sheet(templates[type]);
@@ -191,10 +200,15 @@ export default function AdminDashboard({ admin, onLogout }) {
       let success = 0, failed = 0;
       for (const row of rows) {
         try {
-          const level_id = levelMap[String(row.level_name||'').toUpperCase()] || null;
-          const programme_id = progMap[String(row.programme_name||'').toLowerCase()] || null;
-          const faculty_id = facMap[String(row.faculty_name||'').toLowerCase()] || null;
-          await API.post('/students', { roll_no: String(row.roll_no||''), name: String(row.name||''), email: String(row.email||''), phone: String(row.phone||''), course: String(row.programme_name||''), semester: Number(row.semester||1), year: Number(row.year||1), password: String(row.password||'password123'), level_id, programme_id, faculty_id });
+          await API.post('/students', {
+            roll_no: String(row.roll_no||''), name: String(row.name||''), email: String(row.email||''),
+            phone: String(row.phone||''), course: String(row.programme_name||''),
+            semester: Number(row.semester||1), year: Number(row.year||1),
+            password: String(row.password||'password123'),
+            level_id: levelMap[String(row.level_name||'').toUpperCase()] || null,
+            programme_id: progMap[String(row.programme_name||'').toLowerCase()] || null,
+            faculty_id: facMap[String(row.faculty_name||'').toLowerCase()] || null,
+          });
           success++;
         } catch { failed++; }
       }
@@ -232,10 +246,13 @@ export default function AdminDashboard({ admin, onLogout }) {
         try {
           const category = String(row.category||'').toUpperCase();
           if (!validCategories.includes(category)) { failed++; continue; }
-          const level_id = levelMap[String(row.level_name||'').toUpperCase()] || null;
-          const programme_id = progMap[String(row.programme_name||'').toLowerCase()] || null;
-          const faculty_id = facMap[String(row.faculty_name||'').toLowerCase()] || null;
-          await API.post('/subjects', { subject_code: String(row.subject_code||''), subject_name: String(row.subject_name||''), category, semester: Number(row.semester||1), credits: Number(row.credits||3), level_id, programme_id, faculty_id });
+          await API.post('/subjects', {
+            subject_code: String(row.subject_code||''), subject_name: String(row.subject_name||''),
+            category, semester: Number(row.semester||1), credits: Number(row.credits||3),
+            level_id: levelMap[String(row.level_name||'').toUpperCase()] || null,
+            programme_id: progMap[String(row.programme_name||'').toLowerCase()] || null,
+            faculty_id: facMap[String(row.faculty_name||'').toLowerCase()] || null,
+          });
           success++;
         } catch { failed++; }
       }
@@ -267,10 +284,10 @@ export default function AdminDashboard({ admin, onLogout }) {
   };
 
   const filteredSubjects = subjects.filter(s => {
-    const matchLevel = !subjectFilterLevel || s.level_id === parseInt(subjectFilterLevel);
-    const matchFaculty = !subjectFilterFaculty || s.faculty_id === parseInt(subjectFilterFaculty);
-    const matchProgramme = !subjectFilterProgramme || s.programme_id === parseInt(subjectFilterProgramme);
-    const matchCategory = !subjectFilterCategory || s.category === subjectFilterCategory;
+    const matchLevel = !filterLevel || String(s.level_id) === String(filterLevel);
+    const matchFaculty = !filterFaculty || String(s.faculty_id) === String(filterFaculty);
+    const matchProgramme = !filterProgramme || String(s.programme_id) === String(filterProgramme);
+    const matchCategory = !filterCategory || s.category === filterCategory;
     return matchLevel && matchFaculty && matchProgramme && matchCategory;
   });
 
@@ -291,7 +308,7 @@ export default function AdminDashboard({ admin, onLogout }) {
       <div style={styles.tabs}>
         {tabs.map(tab => (
           <button key={tab} style={{...styles.tab, ...(activeTab===tab ? styles.activeTab : {})}}
-            onClick={() => { setActiveTab(tab); setMsg(''); setForm({}); setSelectedLevel(''); setSelectedFaculty(''); setSubjectFormLevel(''); setSubjectFormFaculty(''); }}>
+            onClick={() => { setActiveTab(tab); setMsg(''); setForm({}); setStudentLevel(''); setStudentFaculty(''); setSubjectLevel(''); setSubjectFaculty(''); }}>
             {tab === 'levels' ? '🏫 Levels & Faculties' : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
@@ -303,82 +320,74 @@ export default function AdminDashboard({ admin, onLogout }) {
 
         {/* LEVELS, FACULTIES & PROGRAMMES */}
         {activeTab === 'levels' && (
-          <div>
-            <div style={styles.threeCol}>
+          <div style={styles.threeCol}>
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>🎯 Levels</h3>
+              <form onSubmit={handleAddLevel} style={styles.form}>
+                <input style={styles.input} placeholder="Level Name (e.g. UG)" value={form.level_name||''} onChange={e => setForm({...form, level_name: e.target.value})} required />
+                <input style={styles.input} placeholder="Description" value={form.description||''} onChange={e => setForm({...form, description: e.target.value})} />
+                <button style={styles.addBtn} type="submit">Add</button>
+              </form>
+              <table style={styles.table}>
+                <thead><tr>{['ID','Level','Desc','Del'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+                <tbody>{levels.map(l=>(
+                  <tr key={l.level_id}>
+                    <td style={styles.td}>{l.level_id}</td>
+                    <td style={styles.td}><span style={{...styles.badge, background:'#4c51bf'}}>{l.level_name}</span></td>
+                    <td style={styles.td}>{l.description}</td>
+                    <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/levels/${l.level_id}`).then(fetchLevels)}>✕</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
 
-              {/* LEVELS */}
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>🎯 Levels</h3>
-                <form onSubmit={handleAddLevel} style={styles.form}>
-                  <input style={styles.input} placeholder="Level Name (e.g. UG, PG)" value={form.level_name||''} onChange={e => setForm({...form, level_name: e.target.value})} required />
-                  <input style={styles.input} placeholder="Description" value={form.description||''} onChange={e => setForm({...form, description: e.target.value})} />
-                  <button style={styles.addBtn} type="submit">Add Level</button>
-                </form>
-                <table style={styles.table}>
-                  <thead><tr>{['ID','Level','Description','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
-                  <tbody>{levels.map(l=>(
-                    <tr key={l.level_id}>
-                      <td style={styles.td}>{l.level_id}</td>
-                      <td style={styles.td}><span style={{...styles.badge, background:'#4c51bf'}}>{l.level_name}</span></td>
-                      <td style={styles.td}>{l.description}</td>
-                      <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/levels/${l.level_id}`).then(fetchLevels)}>Delete</button></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>🏛️ Faculties</h3>
+              <form onSubmit={handleAddFaculty} style={styles.form}>
+                <input style={styles.input} placeholder="Faculty Name (e.g. Arts)" value={form.faculty_name||''} onChange={e => setForm({...form, faculty_name: e.target.value})} required />
+                <input style={styles.input} placeholder="Description" value={form.description||''} onChange={e => setForm({...form, description: e.target.value})} />
+                <button style={styles.addBtn} type="submit">Add</button>
+              </form>
+              <table style={styles.table}>
+                <thead><tr>{['ID','Faculty','Desc','Del'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+                <tbody>{faculties.map(f=>(
+                  <tr key={f.faculty_id}>
+                    <td style={styles.td}>{f.faculty_id}</td>
+                    <td style={styles.td}><span style={{...styles.badge, background: facultyColors[f.faculty_name]||'#667eea'}}>{f.faculty_name}</span></td>
+                    <td style={styles.td}>{f.description}</td>
+                    <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/faculties/${f.faculty_id}`).then(fetchFaculties)}>✕</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
 
-              {/* FACULTIES */}
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>🏛️ Faculties</h3>
-                <form onSubmit={handleAddFaculty} style={styles.form}>
-                  <input style={styles.input} placeholder="Faculty Name (e.g. Arts, Science)" value={form.faculty_name||''} onChange={e => setForm({...form, faculty_name: e.target.value})} required />
-                  <input style={styles.input} placeholder="Description" value={form.description||''} onChange={e => setForm({...form, description: e.target.value})} />
-                  <button style={styles.addBtn} type="submit">Add Faculty</button>
-                </form>
-                <table style={styles.table}>
-                  <thead><tr>{['ID','Faculty','Description','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
-                  <tbody>{faculties.map(f=>(
-                    <tr key={f.faculty_id}>
-                      <td style={styles.td}>{f.faculty_id}</td>
-                      <td style={styles.td}><span style={{...styles.badge, background: facultyColors[f.faculty_name]||'#667eea'}}>{f.faculty_name}</span></td>
-                      <td style={styles.td}>{f.description}</td>
-                      <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/faculties/${f.faculty_id}`).then(fetchFaculties)}>Delete</button></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-
-              {/* PROGRAMMES */}
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>📚 Programmes</h3>
-                <form onSubmit={handleAddProgramme} style={styles.form}>
-                  <select style={styles.input} value={form.level_id||''} onChange={e => setForm({...form, level_id: e.target.value})} required>
-                    <option value="">Select Level</option>
-                    {levels.map(l => <option key={l.level_id} value={l.level_id}>{l.level_name}</option>)}
-                  </select>
-                  <select style={styles.input} value={form.faculty_id||''} onChange={e => setForm({...form, faculty_id: e.target.value})} required>
-                    <option value="">Select Faculty</option>
-                    {faculties.map(f => <option key={f.faculty_id} value={f.faculty_id}>{f.faculty_name}</option>)}
-                  </select>
-                  <input style={styles.input} placeholder="Programme Name" value={form.programme_name||''} onChange={e => setForm({...form, programme_name: e.target.value})} required />
-                  <input style={styles.input} type="number" placeholder="Duration (years)" value={form.duration_years||''} onChange={e => setForm({...form, duration_years: e.target.value})} required />
-                  <button style={styles.addBtn} type="submit">Add Programme</button>
-                </form>
-                <table style={styles.table}>
-                  <thead><tr>{['ID','Level','Faculty','Programme','Dur','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
-                  <tbody>{programmes.map(p=>(
-                    <tr key={p.programme_id}>
-                      <td style={styles.td}>{p.programme_id}</td>
-                      <td style={styles.td}><span style={{...styles.badge, background:'#4c51bf'}}>{p.level_name}</span></td>
-                      <td style={styles.td}><span style={{...styles.badge, background: facultyColors[p.faculty_name]||'#667eea'}}>{p.faculty_name||'N/A'}</span></td>
-                      <td style={styles.td}>{p.programme_name}</td>
-                      <td style={styles.td}>{p.duration_years}y</td>
-                      <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/programmes/${p.programme_id}`).then(fetchProgrammes)}>Delete</button></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>📚 Programmes</h3>
+              <form onSubmit={handleAddProgramme} style={styles.form}>
+                <select style={styles.input} value={form.level_id||''} onChange={e => setForm({...form, level_id: e.target.value})} required>
+                  <option value="">Select Level</option>
+                  {levels.map(l => <option key={l.level_id} value={l.level_id}>{l.level_name}</option>)}
+                </select>
+                <select style={styles.input} value={form.faculty_id||''} onChange={e => setForm({...form, faculty_id: e.target.value})} required>
+                  <option value="">Select Faculty</option>
+                  {faculties.map(f => <option key={f.faculty_id} value={f.faculty_id}>{f.faculty_name}</option>)}
+                </select>
+                <input style={styles.input} placeholder="Programme Name" value={form.programme_name||''} onChange={e => setForm({...form, programme_name: e.target.value})} required />
+                <input style={styles.input} type="number" placeholder="Duration (yrs)" value={form.duration_years||''} onChange={e => setForm({...form, duration_years: e.target.value})} required />
+                <button style={styles.addBtn} type="submit">Add</button>
+              </form>
+              <table style={styles.table}>
+                <thead><tr>{['Level','Faculty','Programme','Dur','Del'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+                <tbody>{programmes.map(p=>(
+                  <tr key={p.programme_id}>
+                    <td style={styles.td}><span style={{...styles.badge, background:'#4c51bf'}}>{p.level_name}</span></td>
+                    <td style={styles.td}><span style={{...styles.badge, background: facultyColors[p.faculty_name]||'#667eea'}}>{p.faculty_name||'N/A'}</span></td>
+                    <td style={styles.td}>{p.programme_name}</td>
+                    <td style={styles.td}>{p.duration_years}y</td>
+                    <td style={styles.td}><button style={styles.delBtn} onClick={()=>API.delete(`/programmes/${p.programme_id}`).then(fetchProgrammes)}>✕</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
             </div>
           </div>
         )}
@@ -402,26 +411,26 @@ export default function AdminDashboard({ admin, onLogout }) {
               {['roll_no','name','email','phone'].map(f => (
                 <input key={f} style={styles.input} placeholder={f.replace('_',' ')} value={form[f]||''} onChange={e => setForm({...form,[f]:e.target.value})} required />
               ))}
-              {/* Level */}
-              <select style={styles.input} value={selectedLevel} onChange={e => { setSelectedLevel(e.target.value); setSelectedFaculty(''); setForm({...form, level_id: e.target.value, faculty_id: '', programme_id: ''}); }} required>
-                <option value="">Select Level</option>
+              <select style={styles.input} value={studentLevel} onChange={e => { setStudentLevel(e.target.value); setStudentFaculty(''); setForm({...form, programme_id: ''}); }} required>
+                <option value="">① Select Level</option>
                 {levels.map(l => <option key={l.level_id} value={l.level_id}>{l.level_name} — {l.description}</option>)}
               </select>
-              {/* Faculty */}
-              <select style={styles.input} value={selectedFaculty} onChange={e => { setSelectedFaculty(e.target.value); setForm({...form, faculty_id: e.target.value, programme_id: ''}); }} required disabled={!selectedLevel}>
-                <option value="">{selectedLevel ? 'Select Faculty' : 'Select Level first'}</option>
+              <select style={styles.input} value={studentFaculty} onChange={e => { setStudentFaculty(e.target.value); setForm({...form, programme_id: ''}); }} required disabled={!studentLevel}>
+                <option value="">{studentLevel ? '② Select Faculty' : 'Select Level first'}</option>
                 {faculties.map(f => <option key={f.faculty_id} value={f.faculty_id}>{f.faculty_name}</option>)}
               </select>
-              {/* Programme */}
-              <select style={styles.input} value={form.programme_id||''} onChange={e => setForm({...form, programme_id: e.target.value, course: filteredProgrammes.find(p=>p.programme_id===parseInt(e.target.value))?.programme_name||''})} required disabled={!selectedFaculty}>
-                <option value="">{selectedFaculty ? 'Select Programme' : 'Select Faculty first'}</option>
-                {filteredProgrammes.map(p => <option key={p.programme_id} value={p.programme_id}>{p.programme_name}</option>)}
+              <select style={styles.input} value={form.programme_id||''} onChange={e => setForm({...form, programme_id: e.target.value, course: studentProgrammes.find(p=>String(p.programme_id)===e.target.value)?.programme_name||''})} required disabled={!studentFaculty}>
+                <option value="">{studentFaculty ? (studentProgrammes.length ? '③ Select Programme' : 'No programmes found') : 'Select Faculty first'}</option>
+                {studentProgrammes.map(p => <option key={p.programme_id} value={p.programme_id}>{p.programme_name}</option>)}
               </select>
               <input style={styles.input} type="number" placeholder="Semester" value={form.semester||''} onChange={e => setForm({...form, semester: e.target.value})} required />
               <input style={styles.input} type="number" placeholder="Year" value={form.year||''} onChange={e => setForm({...form, year: e.target.value})} required />
               <input style={styles.input} type="password" placeholder="Password" value={form.password||''} onChange={e => setForm({...form, password: e.target.value})} required />
               <button style={styles.addBtn} type="submit">Add Student</button>
             </form>
+            {studentLevel && studentFaculty && studentProgrammes.length === 0 && (
+              <div style={styles.warningHint}>⚠️ No programmes found for this Level + Faculty combination. Please add a programme first in the <strong>Levels & Faculties</strong> tab.</div>
+            )}
             <h3>All Students ({students.length})</h3>
             <table style={styles.table}>
               <thead><tr>{['ID','Roll No','Name','Level','Faculty','Programme','Sem','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
@@ -491,6 +500,7 @@ export default function AdminDashboard({ admin, onLogout }) {
               </div>
               <p style={styles.importHint}>📋 Required: <strong>subject_code, subject_name, category, semester, credits, level_name, faculty_name, programme_name</strong></p>
             </div>
+
             <h3>Add Subject Manually</h3>
             <form onSubmit={handleAddSubject} style={styles.form}>
               <input style={styles.input} placeholder="Subject Code" value={form.subject_code||''} onChange={e => setForm({...form, subject_code: e.target.value})} required />
@@ -499,22 +509,25 @@ export default function AdminDashboard({ admin, onLogout }) {
                 <option value="">Select Category</option>
                 {['MAJOR','MINOR','VAC','SEC','MDC','AEC'].map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-              <select style={styles.input} value={subjectFormLevel} onChange={e => { setSubjectFormLevel(e.target.value); setSubjectFormFaculty(''); setForm({...form, level_id: e.target.value, faculty_id: '', programme_id: ''}); }} required>
-                <option value="">Select Level</option>
+              <select style={styles.input} value={subjectLevel} onChange={e => { setSubjectLevel(e.target.value); setSubjectFaculty(''); setForm({...form, programme_id: ''}); }} required>
+                <option value="">① Select Level</option>
                 {levels.map(l => <option key={l.level_id} value={l.level_id}>{l.level_name}</option>)}
               </select>
-              <select style={styles.input} value={subjectFormFaculty} onChange={e => { setSubjectFormFaculty(e.target.value); setForm({...form, faculty_id: e.target.value, programme_id: ''}); }} required disabled={!subjectFormLevel}>
-                <option value="">{subjectFormLevel ? 'Select Faculty' : 'Select Level first'}</option>
+              <select style={styles.input} value={subjectFaculty} onChange={e => { setSubjectFaculty(e.target.value); setForm({...form, programme_id: ''}); }} required disabled={!subjectLevel}>
+                <option value="">{subjectLevel ? '② Select Faculty' : 'Select Level first'}</option>
                 {faculties.map(f => <option key={f.faculty_id} value={f.faculty_id}>{f.faculty_name}</option>)}
               </select>
-              <select style={styles.input} value={form.programme_id||''} onChange={e => setForm({...form, programme_id: e.target.value})} required disabled={!subjectFormFaculty}>
-                <option value="">{subjectFormFaculty ? 'Select Programme' : 'Select Faculty first'}</option>
-                {subjectFormProgrammes.map(p => <option key={p.programme_id} value={p.programme_id}>{p.programme_name}</option>)}
+              <select style={styles.input} value={form.programme_id||''} onChange={e => setForm({...form, programme_id: e.target.value})} required disabled={!subjectFaculty}>
+                <option value="">{subjectFaculty ? (subjectProgrammes.length ? '③ Select Programme' : 'No programmes found') : 'Select Faculty first'}</option>
+                {subjectProgrammes.map(p => <option key={p.programme_id} value={p.programme_id}>{p.programme_name}</option>)}
               </select>
               <input style={styles.input} type="number" placeholder="Semester" value={form.semester||''} onChange={e => setForm({...form, semester: e.target.value})} required />
               <input style={styles.input} type="number" placeholder="Credits" value={form.credits||''} onChange={e => setForm({...form, credits: e.target.value})} required />
               <button style={styles.addBtn} type="submit">Add Subject</button>
             </form>
+            {subjectLevel && subjectFaculty && subjectProgrammes.length === 0 && (
+              <div style={styles.warningHint}>⚠️ No programmes found for this Level + Faculty. Please add a programme first in <strong>Levels & Faculties</strong> tab.</div>
+            )}
 
             {/* FILTER BOX */}
             <div style={styles.filterBox}>
@@ -522,44 +535,38 @@ export default function AdminDashboard({ admin, onLogout }) {
               <div style={styles.filterRow}>
                 <div style={styles.filterField}>
                   <label style={styles.filterLabel}>Level</label>
-                  <select style={styles.filterInput} value={subjectFilterLevel} onChange={e => { setSubjectFilterLevel(e.target.value); setSubjectFilterFaculty(''); setSubjectFilterProgramme(''); }}>
+                  <select style={styles.filterInput} value={filterLevel} onChange={e => { setFilterLevel(e.target.value); setFilterFaculty(''); setFilterProgramme(''); }}>
                     <option value="">All Levels</option>
                     {levels.map(l => <option key={l.level_id} value={l.level_id}>{l.level_name}</option>)}
                   </select>
                 </div>
                 <div style={styles.filterField}>
                   <label style={styles.filterLabel}>Faculty</label>
-                  <select style={styles.filterInput} value={subjectFilterFaculty} onChange={e => { setSubjectFilterFaculty(e.target.value); setSubjectFilterProgramme(''); }} disabled={!subjectFilterLevel}>
-                    <option value="">{subjectFilterLevel ? 'All Faculties' : 'Select Level first'}</option>
+                  <select style={styles.filterInput} value={filterFaculty} onChange={e => { setFilterFaculty(e.target.value); setFilterProgramme(''); }} disabled={!filterLevel}>
+                    <option value="">{filterLevel ? 'All Faculties' : 'Select Level'}</option>
                     {faculties.map(f => <option key={f.faculty_id} value={f.faculty_id}>{f.faculty_name}</option>)}
                   </select>
                 </div>
                 <div style={styles.filterField}>
                   <label style={styles.filterLabel}>Programme</label>
-                  <select style={styles.filterInput} value={subjectFilterProgramme} onChange={e => setSubjectFilterProgramme(e.target.value)} disabled={!subjectFilterFaculty}>
-                    <option value="">{subjectFilterFaculty ? 'All Programmes' : 'Select Faculty first'}</option>
-                    {subjectFilterProgrammes.map(p => <option key={p.programme_id} value={p.programme_id}>{p.programme_name}</option>)}
+                  <select style={styles.filterInput} value={filterProgramme} onChange={e => setFilterProgramme(e.target.value)} disabled={!filterFaculty}>
+                    <option value="">{filterFaculty ? 'All Programmes' : 'Select Faculty'}</option>
+                    {filterProgrammes.map(p => <option key={p.programme_id} value={p.programme_id}>{p.programme_name}</option>)}
                   </select>
                 </div>
                 <div style={styles.filterField}>
                   <label style={styles.filterLabel}>Category</label>
-                  <select style={styles.filterInput} value={subjectFilterCategory} onChange={e => setSubjectFilterCategory(e.target.value)}>
+                  <select style={styles.filterInput} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
                     <option value="">All Categories</option>
                     {['MAJOR','MINOR','VAC','SEC','MDC','AEC'].map(c=><option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div style={styles.filterField}>
                   <label style={styles.filterLabel}>&nbsp;</label>
-                  <button style={styles.clearBtn} onClick={() => { setSubjectFilterLevel(''); setSubjectFilterFaculty(''); setSubjectFilterProgramme(''); setSubjectFilterCategory(''); }}>✖ Clear</button>
+                  <button style={styles.clearBtn} onClick={() => { setFilterLevel(''); setFilterFaculty(''); setFilterProgramme(''); setFilterCategory(''); }}>✖ Clear</button>
                 </div>
               </div>
-              <p style={styles.filterCount}>
-                Showing <strong>{filteredSubjects.length}</strong> of <strong>{subjects.length}</strong> subjects
-                {subjectFilterLevel && <span style={{...styles.badge, background:'#4c51bf', marginLeft:'0.5rem'}}>{levels.find(l=>l.level_id===parseInt(subjectFilterLevel))?.level_name}</span>}
-                {subjectFilterFaculty && <span style={{...styles.badge, background: facultyColors[faculties.find(f=>f.faculty_id===parseInt(subjectFilterFaculty))?.faculty_name]||'#667eea', marginLeft:'0.5rem'}}>{faculties.find(f=>f.faculty_id===parseInt(subjectFilterFaculty))?.faculty_name}</span>}
-                {subjectFilterProgramme && <span style={{...styles.badge, background:'#9f7aea', marginLeft:'0.5rem'}}>{subjectFilterProgrammes.find(p=>p.programme_id===parseInt(subjectFilterProgramme))?.programme_name}</span>}
-                {subjectFilterCategory && <span style={{...styles.badge, background: categoryColors[subjectFilterCategory]||'#667eea', marginLeft:'0.5rem'}}>{subjectFilterCategory}</span>}
-              </p>
+              <p style={styles.filterCount}>Showing <strong>{filteredSubjects.length}</strong> of <strong>{subjects.length}</strong> subjects</p>
             </div>
 
             <h3>Subjects ({filteredSubjects.length})</h3>
@@ -692,10 +699,11 @@ const styles = {
   activeTab: { color: '#4c51bf', borderBottom: '2px solid #4c51bf', fontWeight: '600' },
   content: { padding: '2rem' },
   msg: { padding: '0.75rem 2rem', fontWeight: '600' },
-  threeCol: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' },
+  threeCol: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' },
   section: { background: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
   sectionTitle: { margin: '0 0 1rem', color: '#2d3748', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' },
   readonlyBanner: { background: '#ebf8ff', color: '#2b6cb0', border: '1px solid #90cdf4', borderRadius: '8px', padding: '0.75rem 1.25rem', marginBottom: '1.5rem', fontWeight: '600' },
+  warningHint: { background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d', borderRadius: '8px', padding: '0.75rem 1.25rem', marginBottom: '1rem', fontSize: '0.9rem' },
   importBox: { background: '#fff', border: '2px dashed #4c51bf', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' },
   importTitle: { color: '#4c51bf', marginTop: 0 },
   importActions: { display: 'flex', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' },
@@ -710,7 +718,7 @@ const styles = {
   filterInput: { padding: '0.6rem 0.9rem', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '0.9rem', background: '#f7fafc' },
   filterCount: { margin: '0.75rem 0 0', fontSize: '0.9rem', color: '#4a5568' },
   clearBtn: { padding: '0.6rem 1rem', background: '#fed7d7', color: '#c53030', border: '1px solid #fc8181', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' },
-  form: { display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem', padding: '1rem', background: '#f7fafc', borderRadius: '8px' },
+  form: { display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', padding: '1rem', background: '#f7fafc', borderRadius: '8px' },
   input: { padding: '0.6rem 0.9rem', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '0.95rem', minWidth: '160px' },
   addBtn: { padding: '0.6rem 1.5rem', background: '#4c51bf', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' },
   payBtn: { padding: '0.3rem 0.75rem', background: '#48bb78', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' },
