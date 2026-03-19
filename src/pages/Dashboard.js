@@ -46,7 +46,6 @@ export default function Dashboard({ student, onLogout }) {
 
   const isEnrollmentSubmitted = enrollmentSummary && enrollmentSummary.some(e => e.status !== 'PENDING');
   const acceptedSubjects = enrollmentSummary ? enrollmentSummary.filter(e => e.status === 'ACCEPTED') : [];
-  const rejectedSubjects = enrollmentSummary ? enrollmentSummary.filter(e => e.status === 'REJECTED') : [];
 
   if (showEnrollment) {
     return <StudentEnrollment student={student} onBack={() => { setShowEnrollment(false); fetchEnrollmentSummary(); }} />;
@@ -60,6 +59,13 @@ export default function Dashboard({ student, onLogout }) {
     MAJOR:'#4c51bf', MIC:'#057a55', MDC:'#dd6b20',
     SEC:'#e53e3e', VAC:'#d69e2e', AEC:'#805ad5'
   };
+
+  // Group accepted subjects by category
+  const groupedAccepted = acceptedSubjects.reduce((acc, s) => {
+    if (!acc[s.category]) acc[s.category] = [];
+    acc[s.category].push(s);
+    return acc;
+  }, {});
 
   return (
     <div style={styles.container}>
@@ -96,7 +102,7 @@ export default function Dashboard({ student, onLogout }) {
             <div style={styles.cards}>
               <div style={{...styles.card, background:'#4c51bf'}} onClick={() => setActiveTab('subjects')}>
                 <h3>📚 My Subjects</h3>
-                <p>{isEnrollmentSubmitted ? '✅ Enrollment submitted' : '⚠️ Enrollment pending'}</p>
+                <p>{isEnrollmentSubmitted ? `✅ ${acceptedSubjects.length} subjects enrolled` : '⚠️ Enrollment pending'}</p>
                 <p style={styles.cardArrow}>→ Click to view</p>
               </div>
               <div style={{...styles.card, background:'#48bb78'}} onClick={() => setActiveTab('attendance')}>
@@ -130,6 +136,7 @@ export default function Dashboard({ student, onLogout }) {
               )}
             </div>
 
+            {/* Enrollment pending alert */}
             {!isEnrollmentSubmitted && (
               <div style={styles.enrollmentAlert}>
                 <h3 style={{margin:'0 0 0.5rem', color:'#92400e'}}>⚠️ Enrollment Pending!</h3>
@@ -137,81 +144,65 @@ export default function Dashboard({ student, onLogout }) {
               </div>
             )}
 
-            {isEnrollmentSubmitted && enrollmentSummary && (
+            {/* Accepted subjects grouped by category */}
+            {isEnrollmentSubmitted && acceptedSubjects.length > 0 && (
               <div>
-                {/* Summary Cards */}
+                {/* Summary */}
                 <div style={styles.summaryCards}>
-                  <div style={{...styles.summaryCard, background:'#ebf8ff', border:'2px solid #90cdf4'}}>
-                    <p style={styles.summaryNum}>{enrollmentSummary.length}</p>
-                    <p style={styles.summaryLabel}>Total Subjects</p>
-                  </div>
                   <div style={{...styles.summaryCard, background:'#f0fff4', border:'2px solid #9ae6b4'}}>
                     <p style={{...styles.summaryNum, color:'#276749'}}>{acceptedSubjects.length}</p>
-                    <p style={styles.summaryLabel}>Accepted</p>
+                    <p style={styles.summaryLabel}>Enrolled Subjects</p>
                   </div>
-                  <div style={{...styles.summaryCard, background:'#fff5f5', border:'2px solid #feb2b2'}}>
-                    <p style={{...styles.summaryNum, color:'#c53030'}}>{rejectedSubjects.length}</p>
-                    <p style={styles.summaryLabel}>Error Raised</p>
+                  <div style={{...styles.summaryCard, background:'#ebf8ff', border:'2px solid #90cdf4'}}>
+                    <p style={styles.summaryNum}>{Object.keys(groupedAccepted).length}</p>
+                    <p style={styles.summaryLabel}>Course Types</p>
+                  </div>
+                  <div style={{...styles.summaryCard, background:'#faf5ff', border:'2px solid #d6bcfa'}}>
+                    <p style={{...styles.summaryNum, color:'#553c9a'}}>
+                      {acceptedSubjects.reduce((sum, s) => sum + (s.credits || 0), 0)}
+                    </p>
+                    <p style={styles.summaryLabel}>Total Credits</p>
                   </div>
                 </div>
 
-                {/* Accepted Subjects grouped by category */}
-                {Object.keys(
-                  acceptedSubjects.reduce((acc, s) => { if (!acc[s.category]) acc[s.category]=[]; acc[s.category].push(s); return acc; }, {})
-                ).map(cat => {
-                  const catSubjects = acceptedSubjects.filter(s => s.category === cat);
-                  return (
-                    <div key={cat} style={styles.categoryBlock}>
-                      <div style={{...styles.categoryHeader, background: categoryColors[cat]||'#667eea'}}>
-                        {categoryLabels[cat] || cat}
-                        <span style={styles.catCount}>{catSubjects.length} subjects</span>
-                      </div>
-                      <table style={styles.table}>
-                        <thead>
-                          <tr>{['Course Code','Paper Name','Credits','Int. Marks','End Term','Total','Major?'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr>
-                        </thead>
-                        <tbody>
-                          {catSubjects.map(sub => (
-                            <tr key={sub.enrollment_id}>
-                              <td style={{...styles.td, fontFamily:'monospace', fontWeight:'600'}}>{sub.subject_code}</td>
-                              <td style={styles.td}>{sub.subject_name}</td>
-                              <td style={{...styles.td, textAlign:'center'}}>{sub.credits}</td>
-                              <td style={{...styles.td, textAlign:'center'}}>{sub.internal_marks||'-'}</td>
-                              <td style={{...styles.td, textAlign:'center'}}>{sub.end_term_marks||'-'}</td>
-                              <td style={{...styles.td, textAlign:'center', fontWeight:'700'}}>{sub.total_marks||'-'}</td>
-                              <td style={{...styles.td, textAlign:'center'}}>{sub.is_major ? <span style={{color:'#4c51bf', fontWeight:'700'}}>⭐ Major</span> : '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })}
-
-                {/* Rejected/Error Subjects */}
-                {rejectedSubjects.length > 0 && (
-                  <div style={styles.categoryBlock}>
-                    <div style={{...styles.categoryHeader, background:'#e53e3e'}}>
-                      ❌ Subjects with Errors Raised
-                      <span style={styles.catCount}>{rejectedSubjects.length} subjects</span>
+                {/* Subjects grouped by category */}
+                {Object.keys(categoryLabels).filter(cat => groupedAccepted[cat]).map(category => (
+                  <div key={category} style={styles.categoryBlock}>
+                    <div style={{...styles.categoryHeader, background: categoryColors[category]||'#667eea'}}>
+                      <span style={styles.catTitle}>{categoryLabels[category] || category}</span>
+                      <span style={styles.catCount}>{groupedAccepted[category].length} subjects</span>
                     </div>
                     <table style={styles.table}>
                       <thead>
-                        <tr>{['Course Code','Paper Name','Category','Remarks'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr>
+                        <tr>
+                          {['Course Code','Paper Name','Discipline','Credits','Internal Marks', category==='MAJOR'?'Major?':''].filter(Boolean).map(h=>(
+                            <th key={h} style={styles.th}>{h}</th>
+                          ))}
+                        </tr>
                       </thead>
                       <tbody>
-                        {rejectedSubjects.map(sub => (
-                          <tr key={sub.enrollment_id} style={{background:'#fff5f5'}}>
-                            <td style={{...styles.td, fontFamily:'monospace', fontWeight:'600'}}>{sub.subject_code}</td>
+                        {groupedAccepted[category].map(sub => (
+                          <tr key={sub.enrollment_id}>
+                            <td style={{...styles.td, fontFamily:'monospace', fontWeight:'600', fontSize:'0.82rem'}}>{sub.subject_code}</td>
                             <td style={styles.td}>{sub.subject_name}</td>
-                            <td style={styles.td}><span style={{padding:'0.2rem 0.6rem', borderRadius:'999px', background: categoryColors[sub.category]||'#667eea', color:'#fff', fontSize:'0.75rem'}}>{sub.category}</span></td>
-                            <td style={{...styles.td, color:'#c53030'}}>{sub.remarks || '-'}</td>
+                            <td style={styles.td}>
+                              {sub.discipline_name
+                                ? <span style={styles.discBadge}>{sub.discipline_name}</span>
+                                : <span style={{color:'#a0aec0'}}>-</span>}
+                            </td>
+                            <td style={{...styles.td, textAlign:'center'}}>{sub.credits}</td>
+                            <td style={{...styles.td, textAlign:'center'}}>{sub.internal_marks}</td>
+                            {category === 'MAJOR' && (
+                              <td style={{...styles.td, textAlign:'center'}}>
+                                {sub.is_major ? <span style={{color:'#4c51bf', fontWeight:'700'}}>⭐ Major</span> : '-'}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
+                ))}
               </div>
             )}
           </div>
@@ -314,16 +305,18 @@ const styles = {
   enrollBtn: { padding:'0.75rem 1.5rem', background:'#4c51bf', color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'600', fontSize:'1rem' },
   submittedTag: { background:'#c6f6d5', color:'#276749', padding:'0.5rem 1.25rem', borderRadius:'999px', fontWeight:'600' },
   enrollmentAlert: { background:'#fffbeb', border:'2px solid #fcd34d', borderRadius:'10px', padding:'1rem 1.5rem', marginBottom:'1.5rem' },
-  summaryBox: { background:'#fff', padding:'1.5rem', borderRadius:'12px', marginBottom:'2rem', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
-  summaryCards: { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'1rem', marginBottom:'1rem' },
+  summaryCards: { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:'1rem', marginBottom:'1.5rem' },
   summaryCard: { padding:'1rem', borderRadius:'10px', textAlign:'center' },
   summaryNum: { fontSize:'2rem', fontWeight:'700', margin:0 },
   summaryLabel: { color:'#718096', margin:'0.25rem 0 0', fontSize:'0.85rem' },
+  categoryBlock: { marginBottom:'2rem', borderRadius:'10px', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
+  categoryHeader: { padding:'0.75rem 1.5rem', color:'#fff', display:'flex', justifyContent:'space-between', alignItems:'center' },
+  catTitle: { fontWeight:'700', fontSize:'1rem' },
+  catCount: { background:'rgba(255,255,255,0.3)', padding:'0.2rem 0.75rem', borderRadius:'999px', fontSize:'0.82rem' },
+  discBadge: { background:'#ebf8ff', color:'#2b6cb0', padding:'0.15rem 0.5rem', borderRadius:'999px', fontSize:'0.75rem', fontWeight:'600' },
+  summaryBox: { background:'#fff', padding:'1.5rem', borderRadius:'12px', marginBottom:'2rem', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
   warningBanner: { background:'#fffbeb', color:'#92400e', border:'1px solid #fcd34d', borderRadius:'8px', padding:'0.75rem 1rem', fontWeight:'600' },
   goodBanner: { background:'#f0fff4', color:'#276749', border:'1px solid #9ae6b4', borderRadius:'8px', padding:'0.75rem 1rem', fontWeight:'600' },
-  categoryBlock: { marginBottom:'2rem', borderRadius:'10px', overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
-  categoryHeader: { padding:'0.75rem 1.5rem', color:'#fff', fontWeight:'700', display:'flex', justifyContent:'space-between', alignItems:'center' },
-  catCount: { background:'rgba(255,255,255,0.3)', padding:'0.2rem 0.75rem', borderRadius:'999px', fontSize:'0.85rem' },
   subjectStats: { background:'#fff', padding:'1.5rem', borderRadius:'12px', marginBottom:'2rem', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' },
   subjectGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'1rem' },
   subjectCard: { background:'#f7fafc', padding:'1rem', borderRadius:'10px', border:'1px solid #e2e8f0' },
