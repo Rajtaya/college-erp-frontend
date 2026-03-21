@@ -22,6 +22,7 @@ const categoryLabels = {
 export default function SubjectsTab({ levels, faculties, programmes, showMsg }) {
   const [subjects, setSubjects] = useState([]);
   const [disciplines, setDisciplines] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [form, setForm] = useState({});
   const [subjectLevel, setSubjectLevel] = useState('');
   const [subjectFaculty, setSubjectFaculty] = useState('');
@@ -37,7 +38,7 @@ export default function SubjectsTab({ levels, faculties, programmes, showMsg }) 
   const [showForm, setShowForm] = useState(false);
   const fileRef = useRef();
 
-  useEffect(() => { fetchSubjects(); fetchDisciplines(); }, []);
+  useEffect(() => { fetchSubjects(); fetchDisciplines(); fetchTeachers(); }, []);
 
   useEffect(() => {
     if (subjectLevel && subjectFaculty) {
@@ -65,6 +66,40 @@ export default function SubjectsTab({ levels, faculties, programmes, showMsg }) 
 
   const fetchDisciplines = async () => {
     try { const r = await API.get('/disciplines'); setDisciplines(r.data); } catch(e){}
+  };
+
+  const fetchTeachers = async () => {
+    try { const r = await API.get('/admin/teachers'); setTeachers(r.data); } catch(e){}
+  };
+
+  const [subjectTeachers, setSubjectTeachers] = useState({}); // subject_id -> [teachers]
+
+  const fetchSubjectTeachers = async (subject_id) => {
+    try {
+      const r = await API.get(`/subjects/${subject_id}/teachers`);
+      setSubjectTeachers(prev => ({ ...prev, [subject_id]: r.data }));
+    } catch(e) {}
+  };
+
+  useEffect(() => {
+    subjects.forEach(s => fetchSubjectTeachers(s.subject_id));
+  }, [subjects]);
+
+  const handleAssignTeacher = async (subject_id, teacher_id) => {
+    if (!teacher_id) return;
+    try {
+      await API.post(`/subjects/${subject_id}/teachers`, { teacher_id, section: 'A' });
+      showMsg('Teacher assigned!');
+      fetchSubjectTeachers(subject_id);
+    } catch(e) { showMsg('Failed to assign teacher', 'error'); }
+  };
+
+  const handleRemoveTeacher = async (subject_id, teacher_id) => {
+    try {
+      await API.delete(`/subjects/${subject_id}/teachers/${teacher_id}`);
+      showMsg('Teacher removed!');
+      fetchSubjectTeachers(subject_id);
+    } catch(e) { showMsg('Failed to remove teacher', 'error'); }
   };
 
   const handleAdd = async (e) => {
@@ -409,7 +444,7 @@ export default function SubjectsTab({ levels, faculties, programmes, showMsg }) 
           <table style={st.table}>
             <thead>
               <tr>
-                {['Course Type','Course Code','Paper Name','Discipline','Credits','Contact Hrs','Internal','End Term','Total','Duration','Action'].map(h=>(
+                {['Course Type','Course Code','Paper Name','Discipline','Credits','Contact Hrs','Internal','End Term','Total','Duration','Teacher','Action'].map(h=>(
                   <th key={h} style={st.th}>{h}</th>
                 ))}
               </tr>
@@ -438,6 +473,27 @@ export default function SubjectsTab({ levels, faculties, programmes, showMsg }) 
                     <td style={{...st.td, textAlign:'center'}}>{sub.end_term_marks||'-'}</td>
                     <td style={{...st.td, textAlign:'center', fontWeight:'700'}}>{sub.total_marks||'-'}</td>
                     <td style={{...st.td, textAlign:'center'}}>{sub.exam_duration?`${sub.exam_duration}h`:'-'}</td>
+                    <td style={st.td}>
+                      <div style={{display:'flex', flexWrap:'wrap', gap:'0.3rem', marginBottom:'0.3rem'}}>
+                        {(subjectTeachers[sub.subject_id] || []).map(t => (
+                          <span key={t.teacher_id} style={{display:'inline-flex', alignItems:'center', gap:'0.25rem', background:'#ebf8ff', color:'#2b6cb0', borderRadius:'999px', padding:'0.15rem 0.5rem', fontSize:'0.72rem', fontWeight:'600'}}>
+                            {t.name}{t.section && t.section !== 'A' ? ` (${t.section})` : ''}
+                            <button onClick={() => handleRemoveTeacher(sub.subject_id, t.teacher_id)}
+                              style={{background:'none', border:'none', color:'#e53e3e', cursor:'pointer', fontSize:'0.7rem', padding:0, lineHeight:1}}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                      <select
+                        style={{...st.input, padding:'0.25rem 0.4rem', fontSize:'0.75rem'}}
+                        value=""
+                        onChange={e => handleAssignTeacher(sub.subject_id, e.target.value)}
+                      >
+                        <option value="">+ Add teacher…</option>
+                        {teachers
+                          .filter(t => !(subjectTeachers[sub.subject_id] || []).some(st => st.teacher_id === t.teacher_id))
+                          .map(t => <option key={t.teacher_id} value={t.teacher_id}>{t.name}</option>)}
+                      </select>
+                    </td>
                     <td style={st.td}>
                       <button style={st.delBtn} onClick={()=>handleDelete(sub.subject_id)}>✕</button>
                     </td>

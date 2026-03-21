@@ -13,12 +13,21 @@ export default function AdminDashboard({ admin, onLogout }) {
   const [attendance, setAttendance] = useState([]);
   const [fees, setFees] = useState([]);
   const [marks, setMarks] = useState([]);
+  const [enrollmentSummary, setEnrollmentSummary] = useState([]);
+  const [enrollmentDetail, setEnrollmentDetail] = useState([]);
+  const [selectedEnrollStudent, setSelectedEnrollStudent] = useState(null);
+  const [adminNote, setAdminNote] = useState('');
+  const [enrollSearch, setEnrollSearch] = useState('');
   const [form, setForm] = useState({});
   const [studentLevel, setStudentLevel] = useState('');
   const [studentFaculty, setStudentFaculty] = useState('');
   const [studentProgrammes, setStudentProgrammes] = useState([]);
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('success');
+  const [editingTeacher, setEditingTeacher] = useState(null);
+  const [managingTeacher, setManagingTeacher] = useState(null);
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [teacherSubjects, setTeacherSubjects] = useState([]);
   const [importing, setImporting] = useState(false);
   const studentFileRef = useRef();
   const teacherFileRef = useRef();
@@ -37,6 +46,7 @@ export default function AdminDashboard({ admin, onLogout }) {
     if (activeTab === 'attendance') fetchAttendance();
     if (activeTab === 'fees') { fetchFees(); fetchStudents(); }
     if (activeTab === 'marks') fetchAllMarks();
+    if (activeTab === 'enrollment') { fetchEnrollmentSummary(); setSelectedEnrollStudent(null); }
   }, [activeTab]);
 
   useEffect(() => {
@@ -56,6 +66,39 @@ export default function AdminDashboard({ admin, onLogout }) {
   const fetchAttendance = async () => { try { const r = await API.get('/admin/attendance'); setAttendance(r.data); } catch(e){} };
   const fetchFees = async () => { try { const r = await API.get('/admin/fees'); setFees(r.data); } catch(e){} };
   const fetchAllMarks = async () => { try { const r = await API.get('/admin/marks'); setMarks(r.data); } catch(e){} };
+  const fetchEnrollmentSummary = async () => { try { const r = await API.get('/admin/enrollment/summary'); setEnrollmentSummary(r.data); } catch(e){} };
+
+  const openEnrollmentDetail = async (student) => {
+    setSelectedEnrollStudent(student);
+    setAdminNote('');
+    try { const r = await API.get(`/admin/enrollment/detail/${student.student_id}`); setEnrollmentDetail(r.data); } catch(e){}
+  };
+
+  const handleEnrollStatusChange = (subject_id, newStatus) => {
+    setEnrollmentDetail(prev => prev.map(s => s.subject_id === subject_id ? { ...s, status: newStatus } : s));
+  };
+
+  const handleEnrollSave = async () => {
+    const changes = enrollmentDetail
+      .filter(s => s.status && s.status !== 'PENDING')
+      .map(s => ({ subject_id: s.subject_id, status: s.status }));
+    try {
+      await API.put(`/admin/enrollment/bulkupdate/${selectedEnrollStudent.student_id}`, { changes, admin_note: adminNote });
+      showMsg('Enrollment updated!');
+      fetchEnrollmentSummary();
+      openEnrollmentDetail(selectedEnrollStudent);
+    } catch(e) { showMsg(e.response?.data?.error || 'Error', 'error'); }
+  };
+
+  const handleEnrollReset = async (student) => {
+    if (!window.confirm(`Reset all enrollment for ${student.name}?`)) return;
+    try {
+      await API.delete(`/admin/enrollment/reset/${student.student_id}`);
+      showMsg('Enrollment reset!');
+      fetchEnrollmentSummary();
+      if (selectedEnrollStudent?.student_id === student.student_id) openEnrollmentDetail(student);
+    } catch(e) { showMsg('Reset failed', 'error'); }
+  };
 
   // Helper to get faculty name from faculty_id
   const getFacultyName = (faculty_id) => {
@@ -110,6 +153,37 @@ export default function AdminDashboard({ admin, onLogout }) {
     e.preventDefault();
     try { await API.post('/admin/teachers', form); showMsg('Teacher added!'); setForm({}); fetchTeachers(); }
     catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
+  };
+
+  const handleUpdateTeacher = async (e) => {
+    e.preventDefault();
+    try {
+      await API.put(`/admin/teachers/${editingTeacher.teacher_id}`, editingTeacher);
+      showMsg('Teacher updated!'); setEditingTeacher(null); fetchTeachers();
+    } catch(err) { showMsg(err.response?.data?.error || 'Error', 'error'); }
+  };
+
+  const openManageSubjects = async (teacher) => {
+    setManagingTeacher(teacher);
+    setEditingTeacher(null);
+    try {
+      const [all, assigned] = await Promise.all([
+        API.get('/subjects'),
+        API.get(`/subjects/teacher/${teacher.teacher_id}`)
+      ]);
+      setAllSubjects(all.data);
+      setTeacherSubjects(assigned.data.map(s => s.subject_id));
+    } catch(e) { showMsg('Failed to load subjects', 'error'); }
+  };
+
+  const handleToggleSubject = async (subject_id, currentlyAssigned) => {
+    const newTeacherId = currentlyAssigned ? null : managingTeacher.teacher_id;
+    try {
+      await API.put(`/subjects/${subject_id}`, { teacher_id: newTeacherId });
+      setTeacherSubjects(prev =>
+        currentlyAssigned ? prev.filter(id => id !== subject_id) : [...prev, subject_id]
+      );
+    } catch(e) { showMsg('Failed to update', 'error'); }
   };
 
   const handleAddFee = async (e) => {
@@ -201,7 +275,7 @@ export default function AdminDashboard({ admin, onLogout }) {
     } catch { showMsg('Failed!','error'); } finally { setImporting(false); e.target.value=''; }
   };
 
-  const tabs = ['levels','students','teachers','subjects','attendance','fees','marks'];
+  const tabs = ['levels','students','teachers','subjects','enrollment','attendance','fees','marks'];
   const msgStyle = { ...styles.msg, background: msgType==='error'?'#fff5f5':msgType==='warning'?'#fffbeb':'#c6f6d5', color: msgType==='error'?'#c53030':msgType==='warning'?'#92400e':'#276749' };
 
   return (
@@ -390,13 +464,33 @@ export default function AdminDashboard({ admin, onLogout }) {
               <button style={styles.addBtn} type="submit">Add Teacher</button>
             </form>
             <h3>All Teachers ({teachers.length})</h3>
+            {editingTeacher && (
+              <form onSubmit={handleUpdateTeacher} style={{...styles.form, background:'#fffbeb', border:'1px solid #f6e05e', marginBottom:'1rem'}}>
+                <strong style={{width:'100%',color:'#744210'}}>✏️ Editing: {editingTeacher.name}</strong>
+                {['name','email','phone','department'].map(f=>(
+                  <input key={f} style={styles.input} placeholder={f} value={editingTeacher[f]||''}
+                    onChange={e=>setEditingTeacher({...editingTeacher,[f]:e.target.value})} required={f!=='phone'} />
+                ))}
+                <button style={styles.addBtn} type="submit">Save</button>
+                <button style={{...styles.delBtn, padding:'0.6rem 1rem'}} type="button" onClick={()=>setEditingTeacher(null)}>Cancel</button>
+              </form>
+            )}
             <table style={styles.table}>
-              <thead><tr>{['ID','Name','Email','Department','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{['ID','Name','Email','Phone','Department','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
               <tbody>{teachers.map(t=>(
-                <tr key={t.teacher_id}>
-                  <td style={styles.td}>{t.teacher_id}</td><td style={styles.td}>{t.name}</td>
-                  <td style={styles.td}>{t.email}</td><td style={styles.td}>{t.department}</td>
-                  <td style={styles.td}><button style={styles.delBtn} onClick={()=>handleDelete('teachers',t.teacher_id)}>Delete</button></td>
+                <tr key={t.teacher_id} style={editingTeacher?.teacher_id===t.teacher_id?{background:'#fffbeb'}:{}}>
+                  <td style={styles.td}>{t.teacher_id}</td>
+                  <td style={styles.td}>{t.name}</td>
+                  <td style={styles.td}>{t.email}</td>
+                  <td style={styles.td}>{t.phone||'—'}</td>
+                  <td style={styles.td}>{t.department}</td>
+                  <td style={styles.td}>
+                    <button style={{...styles.addBtn,padding:'0.3rem 0.8rem',fontSize:'0.8rem',marginRight:'0.4rem'}}
+                      onClick={()=>{ setManagingTeacher(null); setEditingTeacher({...t}); }}>Edit</button>
+                    <button style={{...styles.addBtn,padding:'0.3rem 0.8rem',fontSize:'0.8rem',marginRight:'0.4rem',background:'#805ad5'}}
+                      onClick={()=>openManageSubjects(t)}>Subjects</button>
+                    <button style={styles.delBtn} onClick={()=>handleDelete('teachers',t.teacher_id)}>Delete</button>
+                  </td>
                 </tr>
               ))}</tbody>
             </table>
@@ -406,6 +500,136 @@ export default function AdminDashboard({ admin, onLogout }) {
         {/* SUBJECTS */}
         {activeTab === 'subjects' && (
           <SubjectsTab levels={levels} faculties={faculties} programmes={programmes} showMsg={showMsg} />
+        )}
+
+        {/* MANAGE SUBJECTS PANEL — shown in teachers tab */}
+        {activeTab === 'teachers' && managingTeacher && (
+          <div style={{marginTop:'2rem', background:'#fff', borderRadius:'12px', padding:'1.5rem', boxShadow:'0 2px 8px rgba(0,0,0,0.08)'}}>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem', borderBottom:'2px solid #e2e8f0', paddingBottom:'0.75rem'}}>
+              <h3 style={{margin:0}}>📚 Subjects assigned to <span style={{color:'#805ad5'}}>{managingTeacher.name}</span></h3>
+              <button style={{...styles.delBtn, padding:'0.4rem 1rem'}} onClick={()=>setManagingTeacher(null)}>✕ Close</button>
+            </div>
+            {['1','2','3','4','5','6','7','8'].map(sem => {
+              const semSubjects = allSubjects.filter(s => String(s.semester) === sem);
+              if (!semSubjects.length) return null;
+              return (
+                <div key={sem} style={{marginBottom:'1.5rem'}}>
+                  <h4 style={{color:'#4a5568', marginBottom:'0.5rem'}}>Semester {sem}</h4>
+                  <table style={styles.table}>
+                    <thead><tr>{['Code','Subject','Category','Assigned'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+                    <tbody>{semSubjects.map(s => {
+                      const assigned = teacherSubjects.includes(s.subject_id);
+                      const takenByOther = s.teacher_id && s.teacher_id !== managingTeacher.teacher_id;
+                      return (
+                        <tr key={s.subject_id} style={{background: assigned ? '#f0fff4' : takenByOther ? '#fff5f5' : ''}}>
+                          <td style={styles.td}><strong>{s.subject_code}</strong></td>
+                          <td style={styles.td}>{s.subject_name}</td>
+                          <td style={styles.td}><span style={{...styles.badge, background:'#9f7aea'}}>{s.category}</span></td>
+                          <td style={styles.td}>
+                            {takenByOther
+                              ? <span style={{color:'#e53e3e', fontSize:'0.82rem'}}>Assigned to another teacher</span>
+                              : <label style={{cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                                  <input type="checkbox" checked={assigned}
+                                    onChange={() => handleToggleSubject(s.subject_id, assigned)} />
+                                  <span style={{color: assigned ? '#38a169' : '#a0aec0', fontWeight:'600'}}>
+                                    {assigned ? 'Assigned' : 'Unassigned'}
+                                  </span>
+                                </label>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}</tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ENROLLMENT */}
+        {activeTab === 'enrollment' && (
+          <div>
+            {!selectedEnrollStudent ? (
+              <div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+                  <h3 style={{margin:0}}>Enrollment Summary ({enrollmentSummary.length} students)</h3>
+                  <input style={{...styles.input,minWidth:'240px'}} placeholder="Search by name or roll no…"
+                    value={enrollSearch} onChange={e=>setEnrollSearch(e.target.value)} />
+                </div>
+                <table style={styles.table}>
+                  <thead><tr>{['Roll No','Name','Programme','Sem','Total','Accepted','Rejected','Pending','Admin Modified','Actions'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+                  <tbody>{enrollmentSummary
+                    .filter(s => !enrollSearch || s.student_name?.toLowerCase().includes(enrollSearch.toLowerCase()) || s.roll_no?.toLowerCase().includes(enrollSearch.toLowerCase()))
+                    .map(s=>(
+                    <tr key={s.student_id}>
+                      <td style={styles.td}><strong>{s.roll_no}</strong></td>
+                      <td style={styles.td}>{s.student_name}</td>
+                      <td style={styles.td}>{s.programme_name||'—'}</td>
+                      <td style={styles.td}>{s.semester}</td>
+                      <td style={styles.td}>{s.total_enrolled||0}</td>
+                      <td style={styles.td}><span style={{...styles.badge,background:'#48bb78'}}>{s.accepted||0}</span></td>
+                      <td style={styles.td}><span style={{...styles.badge,background:'#e53e3e'}}>{s.rejected||0}</span></td>
+                      <td style={styles.td}><span style={{...styles.badge,background:'#ed8936'}}>{s.pending||0}</span></td>
+                      <td style={styles.td}>{s.admin_modified ? <span style={{...styles.badge,background:'#9f7aea'}}>Yes</span> : '—'}</td>
+                      <td style={styles.td}>
+                        <button style={{...styles.addBtn,padding:'0.3rem 0.9rem',fontSize:'0.8rem',marginRight:'0.5rem'}}
+                          onClick={()=>openEnrollmentDetail(s)}>Manage</button>
+                        <button style={{...styles.delBtn}} onClick={()=>handleEnrollReset(s)}>Reset</button>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : (
+              <div>
+                <div style={{display:'flex',alignItems:'center',gap:'1rem',marginBottom:'1.25rem'}}>
+                  <button style={{...styles.addBtn,background:'#718096'}} onClick={()=>setSelectedEnrollStudent(null)}>← Back</button>
+                  <h3 style={{margin:0}}>Enrollment: {selectedEnrollStudent.name} ({selectedEnrollStudent.roll_no}) — Sem {selectedEnrollStudent.semester}</h3>
+                </div>
+                <div style={{...styles.form,marginBottom:'1rem'}}>
+                  <input style={{...styles.input,flex:1}} placeholder="Admin note (optional)" value={adminNote} onChange={e=>setAdminNote(e.target.value)} />
+                  <button style={styles.addBtn} onClick={handleEnrollSave}>Save Changes</button>
+                  <button style={{...styles.delBtn,padding:'0.6rem 1.2rem'}} onClick={()=>handleEnrollReset(selectedEnrollStudent)}>Reset All</button>
+                </div>
+                {['MAJOR','MIC','MDC','SEC','VAC','AEC'].map(cat => {
+                  const subjects = enrollmentDetail.filter(s => s.category === cat);
+                  if (!subjects.length) return null;
+                  return (
+                    <div key={cat} style={{marginBottom:'1.5rem'}}>
+                      <h4 style={{color:'#4c51bf',marginBottom:'0.5rem'}}>{cat}</h4>
+                      <table style={styles.table}>
+                        <thead><tr>{['Code','Subject','Credits','Status','Action'].map(h=><th key={h} style={styles.th}>{h}</th>)}</tr></thead>
+                        <tbody>{subjects.map(s=>(
+                          <tr key={s.subject_id}>
+                            <td style={styles.td}><strong>{s.subject_code}</strong></td>
+                            <td style={styles.td}>{s.subject_name}</td>
+                            <td style={styles.td}>{s.credits}</td>
+                            <td style={styles.td}>
+                              <span style={{...styles.badge,background:s.status==='ACCEPTED'?'#48bb78':s.status==='REJECTED'?'#e53e3e':s.status==='PENDING'?'#ed8936':'#a0aec0'}}>
+                                {s.status||'NOT ENROLLED'}
+                              </span>
+                              {s.admin_modified ? <span style={{...styles.badge,background:'#9f7aea',marginLeft:'0.4rem'}}>Admin</span> : null}
+                            </td>
+                            <td style={styles.td}>
+                              <select style={{...styles.input,minWidth:'120px',padding:'0.3rem 0.6rem'}}
+                                value={s.status||''}
+                                onChange={e=>handleEnrollStatusChange(s.subject_id, e.target.value)}>
+                                <option value="">— no change —</option>
+                                <option value="ACCEPTED">ACCEPTED</option>
+                                <option value="REJECTED">REJECTED</option>
+                                <option value="PENDING">PENDING</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ATTENDANCE */}
