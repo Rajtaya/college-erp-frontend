@@ -116,10 +116,9 @@ export default function StudentEnrollment({ student, onBack }) {
       // Auto-reject unselected MAJOR subjects when total credits reach 12
       if (sub.category === 'MAJOR') {
         const getB = (code) => { const c=code.trim(); const l=c.slice(-1).toUpperCase(); return ['T','P'].includes(l)?c.slice(0,-1):c; };
-        const accMajors = Object.entries(updated)
-          .filter(([id, e]) => e.status === 'ACCEPTED' && e.category === 'MAJOR')
-          .map(([id]) => subjects.find(s => s.subject_id === parseInt(id)))
-          .filter(Boolean);
+        const accMajors = subjects.filter(s => 
+          s.category === 'MAJOR' && updated[s.subject_id]?.status === 'ACCEPTED'
+        );
         const totalMajCr = accMajors.reduce((sum, s) => sum + (s.credits || 0), 0);
         const accBases = new Set(accMajors.map(s => getB(s.subject_code)));
         if (totalMajCr >= 12) {
