@@ -186,14 +186,16 @@ export default function StudentEnrollment({ student, onBack }) {
 
     const majorDisciplines = (byCategory['MAJOR']||[]).map(s => s.discipline_id).filter(Boolean);
 
-    // MAJOR: exactly 3 groups
+    // MAJOR: total credits must be exactly 12
     const major = byCategory['MAJOR']||[];
     const getMBase = (code) => { const c=code.trim(); const l=c.slice(-1).toUpperCase(); return ['T','P'].includes(l)?c.slice(0,-1):c; };
+    const majorTotalCredits = major.reduce((sum, s) => sum + (s.credits || 0), 0);
+    if (majorTotalCredits === 0) errors.push('MAJOR: Must select subjects with total 12 credits (selected 0)');
+    else if (majorTotalCredits < 12) errors.push('MAJOR: Total credits must be 12 (currently ' + majorTotalCredits + ' credits selected)');
+    else if (majorTotalCredits > 12) errors.push('MAJOR: Total credits must be 12 (currently ' + majorTotalCredits + ' credits selected — too many)');
+    // Check T+P pairing
     const mGroups = {};
     major.forEach(s => { const b=getMBase(s.subject_code); if(!mGroups[b]) mGroups[b]=[]; mGroups[b].push(s); });
-    const mCount = Object.keys(mGroups).length;
-    if (mCount < 3) errors.push('MAJOR: Must select exactly 3 subjects/groups (selected ' + mCount + ')');
-    if (mCount > 3) errors.push('MAJOR: Cannot select more than 3 groups (selected ' + mCount + ')');
     Object.entries(mGroups).forEach(([base, group]) => {
       const hasT = group.some(s => s.subject_code.trim().toUpperCase().endsWith('T'));
       const hasP = group.some(s => s.subject_code.trim().toUpperCase().endsWith('P'));
