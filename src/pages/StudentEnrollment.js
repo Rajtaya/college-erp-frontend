@@ -257,13 +257,7 @@ export default function StudentEnrollment({ student, onBack }) {
         ))}
       </div>
 
-      {/* Validation Errors */}
-      {validationErrors.length > 0 && (
-        <div style={s.validationBox}>
-          <h4 style={{margin:'0 0 0.5rem', color:'#c53030'}}>⚠️ Please fix these issues before submitting:</h4>
-          {validationErrors.map((err,i) => <p key={i} style={s.validationErr}>{err}</p>)}
-        </div>
-      )}
+
 
       {/* Subject Categories */}
       {Object.keys(categoryLabels).filter(cat => grouped[cat]).map(category => (
@@ -366,14 +360,22 @@ export default function StudentEnrollment({ student, onBack }) {
 
       {/* Submit */}
       {!submitted && subjects.length > 0 && (
-        <div style={s.submitSection}>
-          <div>
-            <p style={{margin:'0 0 0.25rem', fontWeight:'600', color:'#2d3748'}}>⚠️ Once submitted, you cannot change your enrollment.</p>
-            <p style={{margin:0, color:'#718096', fontSize:'0.9rem'}}>Pending: <strong style={{color:pendingCount>0?'#c53030':'#276749'}}>{pendingCount} subjects</strong></p>
+        <div style={s.submitWrapper}>
+          {validationErrors.length > 0 && (
+            <div style={s.validationBox}>
+              <h4 style={{margin:'0 0 0.5rem', color:'#c53030'}}>⚠️ Please fix these issues before submitting:</h4>
+              {validationErrors.map((err,i) => <p key={i} style={s.validationErr}>{err}</p>)}
+            </div>
+          )}
+          <div style={s.submitSection}>
+            <div>
+              <p style={{margin:'0 0 0.25rem', fontWeight:'600', color:'#2d3748'}}>⚠️ Once submitted, you cannot change your enrollment.</p>
+              <p style={{margin:0, color:'#718096', fontSize:'0.9rem'}}>Pending: <strong style={{color:pendingCount>0?'#c53030':'#276749'}}>{pendingCount} subjects</strong></p>
+            </div>
+            <button style={{...s.submitBtn, opacity:submitting?0.6:1}} onClick={handleSubmit} disabled={submitting}>
+              {submitting?'⏳ Submitting...':'🚀 Submit Enrollment'}
+            </button>
           </div>
-          <button style={{...s.submitBtn, opacity:submitting?0.6:1}} onClick={handleSubmit} disabled={submitting}>
-            {submitting?'⏳ Submitting...':'🚀 Submit Enrollment'}
-          </button>
         </div>
       )}
 
@@ -421,4 +423,5 @@ const s = {
   submitSection: { background:'#fff', padding:'1.5rem', borderRadius:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.08)', flexWrap:'wrap', gap:'1rem' },
   submitBtn: { padding:'1rem 3rem', background:'#4c51bf', color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'700', fontSize:'1.1rem' },
   emptyState: { background:'#fff', padding:'3rem', textAlign:'center', borderRadius:'12px', color:'#718096', fontSize:'1.1rem' },
+  submitWrapper: { marginTop:'1rem' },
 };
