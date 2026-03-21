@@ -116,7 +116,62 @@ export default function StudentEnrollment({ student, onBack }) {
       return updated;
     });
 
-    setValidationErrors([]);
+    // Re-run validation live to clear resolved errors
+    setTimeout(() => {
+      setEnrollments(prev => {
+        const accepted = Object.entries(prev)
+          .filter(([,e]) => e.status === 'ACCEPTED')
+          .map(([id]) => subjects.find(s => s.subject_id === parseInt(id)))
+          .filter(Boolean);
+
+        const byCategory = {};
+        accepted.forEach(s => {
+          if (!byCategory[s.category]) byCategory[s.category] = [];
+          byCategory[s.category].push(s);
+        });
+
+        const majorDisciplines = (byCategory['MAJOR']||[]).map(s => s.discipline_id).filter(Boolean);
+        const errors = [];
+
+        const mic = byCategory['MIC']||[];
+        if (mic.length === 0) errors.push('❌ MIC: Must select exactly 1 subject');
+        else if (mic.length > 1) errors.push(`❌ MIC: Select only 1 subject (you selected ${mic.length})`);
+        else if (majorDisciplines.includes(mic[0].discipline_id)) errors.push(`❌ MIC: "${mic[0].subject_name}" conflicts with your MAJOR discipline`);
+
+        const vac = byCategory['VAC']||[];
+        if (vac.length === 0) errors.push('❌ VAC: Must select exactly 1 subject');
+        else if (vac.length > 1) errors.push(`❌ VAC: Select only 1 subject (you selected ${vac.length})`);
+
+        const aec = byCategory['AEC']||[];
+        if (aec.length > 1) errors.push(`❌ AEC: Select only 1 subject (you selected ${aec.length})`);
+
+        const getBase = (code) => { const c=code.trim(); const l=c.slice(-1).toUpperCase(); return ['T','P'].includes(l)?c.slice(0,-1):c; };
+
+        const mdc = byCategory['MDC']||[];
+        if (mdc.length > 0) {
+          mdc.forEach(s => {
+            if (majorDisciplines.includes(s.discipline_id))
+              errors.push(`❌ MDC: "${s.subject_name}" conflicts with your MAJOR discipline`);
+          });
+          const mdcGroups = {};
+          mdc.forEach(s => { const b=getBase(s.subject_code); if(!mdcGroups[b]) mdcGroups[b]=[]; mdcGroups[b].push(s); });
+          if (Object.keys(mdcGroups).length > 1) errors.push('❌ MDC: Select subjects from only ONE group');
+        }
+
+        const sec = byCategory['SEC']||[];
+        if (sec.length > 0) {
+          const secGroups = {};
+          sec.forEach(s => { const b=getBase(s.subject_code); if(!secGroups[b]) secGroups[b]=[]; secGroups[b].push(s); });
+          if (Object.keys(secGroups).length > 1) errors.push('❌ SEC: Select subjects from only ONE group');
+        }
+
+        const pending = Object.values(prev).filter(e => e.status === 'PENDING');
+        if (pending.length > 0) errors.push(`❌ ${pending.length} subject(s) still pending`);
+
+        setValidationErrors(errors);
+        return prev;
+      });
+    }, 0);
   };
 
   // Frontend validation before submit
