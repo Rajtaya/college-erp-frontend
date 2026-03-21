@@ -104,7 +104,7 @@ export default function StudentEnrollment({ student, onBack }) {
       }
 
       // For MDC/SEC: auto-reject other groups when one group is accepted
-      if (['MDC','SEC','MAJOR'].includes(sub.category) && newStatus === 'ACCEPTED') {
+      if (['MDC','SEC'].includes(sub.category) && newStatus === 'ACCEPTED') {
         const selectedBase = getBaseCode(sub.subject_code);
         subjects.forEach(s => {
           if (s.category === sub.category && getBaseCode(s.subject_code) !== selectedBase) {
