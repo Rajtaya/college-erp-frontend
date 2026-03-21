@@ -87,7 +87,7 @@ export default function StudentEnrollment({ student, onBack }) {
       const updated = { ...prev, [subject_id]: { ...prev[subject_id], status: newStatus } };
 
       // Auto-pair logic for MDC and SEC 2-credit T+P subjects
-      if (['MDC','SEC'].includes(sub.category) && sub.pair_code && sub.credits <= 2) {
+      if (['MDC','SEC','MAJOR'].includes(sub.category) && sub.pair_code) {
         const pairSubject = subjects.find(s => s.subject_code.trim() === sub.pair_code.trim());
         if (pairSubject) {
           updated[pairSubject.subject_id] = { ...prev[pairSubject.subject_id], status: newStatus };
@@ -104,7 +104,7 @@ export default function StudentEnrollment({ student, onBack }) {
       }
 
       // For MDC/SEC: auto-reject other groups when one group is accepted
-      if (['MDC','SEC'].includes(sub.category) && newStatus === 'ACCEPTED') {
+      if (['MDC','SEC','MAJOR'].includes(sub.category) && newStatus === 'ACCEPTED') {
         const selectedBase = getBaseCode(sub.subject_code);
         subjects.forEach(s => {
           if (s.category === sub.category && getBaseCode(s.subject_code) !== selectedBase) {
